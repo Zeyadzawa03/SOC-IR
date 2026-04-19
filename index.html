@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Interactive Sigma Detection & Threat Intelligence Platform - A professional SOC analyst reference for detection engineering with MITRE ATT&CK mapping, Sigma rules, and threat intelligence.">
+  <meta name="keywords" content="Sigma, SIEM, detection engineering, MITRE ATT&CK, threat intelligence, SOC, cybersecurity, Sigma rules">
+  <meta name="author" content="SOC Detection Engineering Platform">
+  <title>SigmaGuard — Blue Team Detection & Response Platform</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+</head>
+<body>
+
+<div id="app-container">
+  <!-- ═══ Sidebar Navigation ═══ -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">🛡️</div>
+      <div class="brand-text">
+        <span class="brand-title">SigmaGuard</span>
+        <span class="brand-subtitle">Detection Platform</span>
+      </div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <div class="nav-item active" data-page="dashboard">
+        <span class="nav-icon">📊</span>
+        Dashboard
+      </div>
+      <div class="nav-item" data-page="rules">
+        <span class="nav-icon">📋</span>
+        Rules Explorer
+        <span class="nav-badge" id="navRulesBadge">0</span>
+      </div>
+      <div class="nav-item" data-page="mitre">
+        <span class="nav-icon">🎯</span>
+        MITRE ATT&CK
+      </div>
+      <div class="nav-section-label">Categories</div>
+      <div class="nav-item" data-page="categories">
+        <span class="nav-icon">🗂️</span>
+        Attack Categories
+        <span class="nav-badge" id="navCatBadge">--</span>
+      </div>
+      <div class="nav-section-label">Intelligence</div>
+      <div class="nav-item" data-page="threat-intel">
+        <span class="nav-icon">🌐</span>
+        Threat Intel
+      </div>
+      <div class="nav-item" data-page="coverage">
+        <span class="nav-icon">📈</span>
+        Coverage Analysis
+      </div>
+      <div class="nav-section-label">Response & Hunting</div>
+      <div class="nav-item" data-page="incident-response">
+        <span class="nav-icon">🚨</span>
+        Incident Response
+      </div>
+      <div class="nav-item" data-page="threat-hunting">
+        <span class="nav-icon">🎯</span>
+        Threat Hunting
+      </div>
+      <div class="nav-item" data-page="correlation">
+        <span class="nav-icon">🔗</span>
+        Correlation & Risk
+      </div>
+      <div class="nav-section-label">Forensics & Context</div>
+      <div class="nav-item" data-page="forensics">
+        <span class="nav-icon">🔬</span>
+        Digital Forensics
+      </div>
+      <div class="nav-item" data-page="assets">
+        <span class="nav-icon">🖥️</span>
+        Assets & Identity
+      </div>
+      <div class="nav-section-label">Info</div>
+      <div class="nav-item" onclick="showAboutModal()">
+        <span class="nav-icon">ℹ️</span>
+        About Platform
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      SigmaGuard v4.0<br>
+      <span style="font-size:0.65rem">Blue Team Detection & Response Platform</span>
+    </div>
+  </nav>
+
+  <!-- ═══ Main Content ═══ -->
+  <main class="main-content">
+    <!-- Top Header -->
+    <header class="top-header">
+      <div class="header-left">
+        <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Toggle navigation">☰</button>
+        <div class="header-breadcrumb" id="header-breadcrumb">
+          <span class="current">Dashboard</span>
+        </div>
+      </div>
+      <div class="header-search">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="globalSearch" placeholder="Search rules, techniques, CVEs..." aria-label="Global search">
+      </div>
+      <div class="header-right">
+        <button class="header-btn" onclick="exportRules()" id="exportBtn">
+          📥 Export
+        </button>
+        <button class="header-btn" onclick="showQAChecklist()" id="qaBtn">
+          ✅ QA Checklist
+        </button>
+      </div>
+    </header>
+
+    <!-- Page Content Container -->
+    <div class="page-content" id="page-content">
+      <!-- Content rendered dynamically by app.js -->
+      <div style="display:flex;align-items:center;justify-content:center;min-height:60vh">
+        <div class="empty-state">
+          <div class="empty-state-icon" style="animation:pulse 1.5s infinite">🛡️</div>
+          <div class="empty-state-text">Loading Platform...</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══ Modal Overlay ═══ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalContent">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Modal</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- ═══ Toast Container ═══ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ═══ Scripts ═══ -->
+<script src="js/mitre-data.js"></script>
+<script src="js/sigma-rules-part1.js"></script>
+<script src="js/sigma-rules-part2.js"></script>
+<script src="js/sigma-rules-part3.js"></script>
+<script src="js/sigma-rules-part4.js"></script>
+<script src="js/sigma-rules-part5.js"></script>
+<script src="js/sigma-rules-part6.js"></script>
+<script src="js/sigma-rules-part7.js"></script>
+<script src="js/sigma-rules-part9.js"></script>
+<script src="js/sigma-rules-part10.js"></script>
+<script src="js/sigma-rules-part8.js"></script>
+<script src="js/sigma-converter.js"></script>
+<script src="js/sigma-rules-queries.js"></script>
+<script src="js/cve-data.js"></script>
+<script src="js/threat-intel.js"></script>
+<script src="js/ir-data.js"></script>
+<script src="js/hunting-data.js"></script>
+<script src="js/forensics-data.js"></script>
+<script src="js/correlation-engine.js"></script>
+<script src="js/asset-context.js"></script>
+<script src="js/app.js"></script>
+<script src="js/blue-team-pages.js"></script>
+
+<script>
+// ── Modal Functions ──
+function showModal(title, bodyHtml) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('active');
+}
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ── Toast Notifications ──
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span>${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span> ${message}`;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(30px)'; setTimeout(() => toast.remove(), 300); }, 3000);
+}
+
+// ── Export Rules ──
+function exportRules() {
+  const allYaml = SIGMA_RULES.map(r => r.sigmaYaml).join('\n\n---\n\n');
+  const blob = new Blob([allYaml], { type: 'text/yaml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sigma_rules_export.yml';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`Exported ${SIGMA_RULES.length} Sigma rules`, 'success');
+}
+
+// ── QA Checklist Modal ──
+function showQAChecklist() {
+  const checks = SIGMA_RULES.map(r => {
+    const issues = [];
+    if (!r.sigmaYaml) issues.push('Missing YAML');
+    if (!r.detectionExplanation) issues.push('Missing explanation');
+    if (!r.techniqueId) issues.push('Missing MITRE mapping');
+    if (!r.requiredLogs.length) issues.push('Missing data sources');
+    if (!r.falsePositives.length) issues.push('Missing false positives');
+    if (!r.tuning) issues.push('Missing tuning guidance');
+    if (!r.responseActions.length) issues.push('Missing response actions');
+    if (!r.references.length) issues.push('Missing references');
+    return { rule: r, issues, passed: issues.length === 0 };
+  });
+  const passedCount = checks.filter(c => c.passed).length;
+  const html = `
+    <div style="margin-bottom:16px">
+      <div style="font-size:1.2rem;font-weight:800;color:var(--text-primary)">${passedCount} / ${SIGMA_RULES.length} rules pass QA</div>
+      <div style="font-size:0.82rem;color:var(--text-secondary);margin-top:4px">All rules are validated against the SOP requirements</div>
+      <div class="coverage-bar" style="margin-top:12px"><div class="coverage-bar-fill high" style="width:${(passedCount/SIGMA_RULES.length)*100}%"></div></div>
+    </div>
+    <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:16px 0 8px">QA Requirements</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${['Valid Sigma YAML','Correct MITRE mapping','Required data sources documented','Detection logic explained','False positives documented','Tuning guidance included','Response actions defined','Official references provided'].map(req => `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg-card);border-radius:var(--radius-sm)">
+          <span style="color:var(--accent-green)">✅</span>
+          <span style="font-size:0.82rem;color:var(--text-secondary)">${req}</span>
+          <span style="margin-left:auto;font-size:0.72rem;color:var(--accent-green);font-weight:600">${passedCount}/${SIGMA_RULES.length}</span>
+        </div>`).join('')}
+    </div>
+  `;
+  showModal('Quality Assurance Checklist', html);
+}
+
+// ── About Modal ──
+function showAboutModal() {
+  showModal('About SigmaGuard Platform', `
+    <div style="text-align:center;padding:16px 0">
+      <div style="font-size:3rem;margin-bottom:12px">🛡️</div>
+      <div style="font-size:1.3rem;font-weight:800;color:var(--text-primary)">SigmaGuard</div>
+      <div style="font-size:0.82rem;color:var(--text-secondary);margin:4px 0">Interactive Sigma Detection & Threat Intelligence Platform</div>
+      <div style="font-size:0.72rem;color:var(--text-muted)">Version 2.0</div>
+    </div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border-primary)">
+      <div class="info-box info">
+        <div class="info-box-title">Platform Overview</div>
+        This platform serves as a comprehensive SOC analyst reference for detection engineering. It provides:
+        <ul style="margin-top:8px;padding-left:20px">
+          <li>Production-ready Sigma detection rules</li>
+          <li>Full MITRE ATT&CK framework mapping</li>
+          <li>CISA KEV threat intelligence integration</li>
+          <li>Coverage gap analysis</li>
+          <li>QA validation and rule lifecycle management</li>
+        </ul>
+      </div>
+      <div style="margin-top:16px">
+        <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px">Official Sources</div>
+        <ul class="detail-list">
+          <li><a href="https://github.com/SigmaHQ/sigma" target="_blank" rel="noopener" style="color:var(--accent-cyan);text-decoration:none">SigmaHQ Specification</a></li>
+          <li><a href="https://attack.mitre.org" target="_blank" rel="noopener" style="color:var(--accent-cyan);text-decoration:none">MITRE ATT&CK Framework</a></li>
+          <li><a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog" target="_blank" rel="noopener" style="color:var(--accent-cyan);text-decoration:none">CISA KEV Catalog</a></li>
+          <li><a href="https://oasis-open.github.io/cti-documentation/stix/intro" target="_blank" rel="noopener" style="color:var(--accent-cyan);text-decoration:none">STIX/TAXII Standards</a></li>
+        </ul>
+      </div>
+    </div>
+  `);
+}
+
+// ── Keyboard Shortcuts ──
+document.addEventListener('keydown', function(e) {
+  // Ctrl+K or / to focus search
+  if ((e.ctrlKey && e.key === 'k') || (e.key === '/' && !['INPUT','TEXTAREA'].includes(e.target.tagName))) {
+    e.preventDefault();
+    document.getElementById('globalSearch')?.focus();
+  }
+  // Escape to close modal
+  if (e.key === 'Escape') closeModal();
+});
+
+// ── Animated Counter ──
+function animateCounters() {
+  document.querySelectorAll('.stat-value').forEach(el => {
+    const text = el.textContent.trim();
+    const hasPercent = text.includes('%');
+    const num = parseInt(text);
+    if (isNaN(num) || num === 0) return;
+    const duration = 1200;
+    const start = performance.now();
+    const ease = t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    el.textContent = hasPercent ? '0%' : '0';
+    function step(now) {
+      const progress = Math.min((now - start) / duration, 1);
+      const current = Math.round(ease(progress) * num);
+      el.textContent = hasPercent ? current + '%' : current;
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  });
+}
+
+// Trigger counters after page renders
+const origRender = window.navigate;
+const _origNavigate = window.navigate;
+window.navigate = function() {
+  _origNavigate.apply(this, arguments);
+  setTimeout(animateCounters, 150);
+};
+setTimeout(animateCounters, 500);
+
+// ── Floating Particles ──
+(function initParticles() {
+  const canvas = document.createElement('canvas');
+  canvas.id = 'particles-canvas';
+  document.body.insertBefore(canvas, document.body.firstChild);
+  const ctx = canvas.getContext('2d');
+  let w, h, particles = [];
+  
+  function resize() {
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  
+  class Particle {
+    constructor() { this.reset(); }
+    reset() {
+      this.x = Math.random() * w;
+      this.y = Math.random() * h;
+      this.size = Math.random() * 1.5 + 0.3;
+      this.speedX = (Math.random() - 0.5) * 0.3;
+      this.speedY = (Math.random() - 0.5) * 0.3;
+      this.opacity = Math.random() * 0.4 + 0.1;
+      this.color = ['0,212,255', '139,92,246', '16,185,129'][Math.floor(Math.random()*3)];
+    }
+    update() {
+      this.x += this.speedX;
+      this.y += this.speedY;
+      if (this.x < 0 || this.x > w || this.y < 0 || this.y > h) this.reset();
+    }
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${this.color}, ${this.opacity})`;
+      ctx.fill();
+    }
+  }
+  
+  for (let i = 0; i < 50; i++) particles.push(new Particle());
+  
+  function animate() {
+    ctx.clearRect(0, 0, w, h);
+    particles.forEach(p => { p.update(); p.draw(); });
+    // Draw connections
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i+1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 120) {
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(0, 212, 255, ${0.04 * (1 - dist/120)})`;
+          ctx.lineWidth = 0.5;
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+</script>
+
+</body>
+</html>
