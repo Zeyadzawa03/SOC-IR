@@ -145,7 +145,17 @@ function render() {
     case 'threat-hunting': renderThreatHuntingPage(content); breadcrumb.innerHTML = 'Platform <span class="separator">›</span> <span class="current">Threat Hunting</span>'; break;
     case 'correlation': renderCorrelationPage(content); breadcrumb.innerHTML = 'Platform <span class="separator">›</span> <span class="current">Correlation & Risk</span>'; break;
     case 'forensics': renderForensicsPage(content); breadcrumb.innerHTML = 'Platform <span class="separator">›</span> <span class="current">Digital Forensics</span>'; break;
-    case 'assets': renderAssetsPage(content); breadcrumb.innerHTML = 'Platform <span class="separator">›</span> <span class="current">Assets & Identity</span>'; break;
+    case 'assets': renderAssetsPage(content); breadcrumb.innerHTML = 'Platform <span class="separator">›</span> <span class="current">Assets &amp; Identity</span>'; break;
+    case 'detection-testing':
+      if (typeof renderDetectionTestingPage === 'function') renderDetectionTestingPage(content);
+      else content.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧪</div><div class="empty-state-text">Detection Testing module loading...</div></div>';
+      breadcrumb.innerHTML = 'Platform <span class="separator">›</span> <span class="current">Detection Testing</span>';
+      break;
+    case 'system-intelligence':
+      if (typeof renderSystemIntelligencePage === 'function') renderSystemIntelligencePage(content);
+      else content.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🖥️</div><div class="empty-state-text">System Intelligence module loading...</div></div>';
+      breadcrumb.innerHTML = 'Platform <span class="separator">›</span> <span class="current">System Intelligence</span>';
+      break;
     default: renderDashboard(content);
   }
 }
@@ -377,7 +387,12 @@ function renderRuleDetail(el) {
     <div class="rule-detail animate-fadeInUp">
       <button class="back-btn" onclick="navigate('rules')">← Back to Rules</button>
       <div class="rule-detail-header">
-        <h1 class="rule-detail-title">${escHtml(rule.title)}</h1>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 12px;">
+          <h1 class="rule-detail-title" style="margin:0;">${escHtml(rule.title)}</h1>
+          <button class="btn-sm" style="background:rgba(245, 158, 11, 0.1); border-color:rgba(245, 158, 11, 0.4); color:#f59e0b; padding:8px 16px; font-size:0.85rem; font-weight: 700; height: fit-content;" onclick="simulateAlert('${rule.id}')">
+            <span style="margin-right:6px">⚡</span>Simulate Alert
+          </button>
+        </div>
         <div class="rule-detail-meta">
           <span class="badge badge-severity-${rule.severity}">${rule.severity}</span>
           <span class="badge badge-status-${rule.status}">${rule.status}</span>
@@ -1592,6 +1607,203 @@ window.getCategoryMeta = getCategoryMeta;
 window.getCategoryLabel = getCategoryLabel;
 window.SIGMA_RULES = SIGMA_RULES;
 window.CATEGORIES = typeof ATTACK_CATEGORIES !== 'undefined' ? ATTACK_CATEGORIES : [];
+
+// ══════════════════════════════════════════════
+// ALERT SIMULATION ENGINE
+// ══════════════════════════════════════════════
+window.simulateAlert = function(ruleId) {
+  const rule = getRuleById(ruleId);
+  if (!rule) return;
+  
+  // 1. Create Modal Container if it doesn't exist
+  let modalWrapper = document.getElementById('sim-alert-modal-wrapper');
+  if (!modalWrapper) {
+    modalWrapper = document.createElement('div');
+    modalWrapper.id = 'sim-alert-modal-wrapper';
+    document.body.appendChild(modalWrapper);
+  }
+  
+  // 2. Generate Mock Event Data based on logsource
+  const mockEvent = generateMockEvent(rule);
+  
+  // 3. Render Modal Loading State
+  modalWrapper.innerHTML = `
+    <div class="sim-alert-modal active">
+      <div class="sim-alert-overlay" onclick="closeSimulateAlert()"></div>
+      <div class="sim-alert-content">
+        <div class="sim-alert-header">
+          <h2 class="sim-alert-title"><span style="color:#f59e0b;margin-right:8px">⚡</span>Alert Simulation Engine</h2>
+          <button class="sim-alert-close" onclick="closeSimulateAlert()">✕</button>
+        </div>
+        
+        <div class="sim-loading-state" id="sim-loader">
+          <div class="ti-loading-spinner" style="margin-bottom:20px;"></div>
+          <div style="font-weight:700; color:var(--text-primary); font-size:1.1rem; margin-bottom:8px">Simulating Attack Behavior</div>
+          <div style="color:var(--text-secondary); font-size:0.85rem">Generating mock telemtry and executing detection logic across SIEM buffer...</div>
+        </div>
+        
+        <div id="sim-result-container" style="display:none; animation: fadeInContent 0.3s ease;"></div>
+      </div>
+    </div>
+  `;
+  
+  // Prevent body scrolling
+  document.body.style.overflow = 'hidden';
+  
+  // 4. Simulate Processing Delay (1.5 seconds)
+  setTimeout(() => {
+    document.getElementById('sim-loader').style.display = 'none';
+    
+    // Retrieve IR Playbook
+    const irPlaybook = typeof getIRPlaybook !== 'undefined' ? getIRPlaybook(rule.category) : null;
+    let irStepsHtml = '';
+    if (irPlaybook) {
+      irStepsHtml = `
+        <div class="sim-section">
+          <div class="sim-section-title">🚨 First-Response Actions</div>
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-primary); border-radius:var(--radius-md); padding:16px;">
+            <ul class="detail-list" style="margin:0">
+              ${irPlaybook.containmentActions.slice(0, 3).map(a => `<li>${escHtml(a)}</li>`).join('')}
+            </ul>
+            <button class="btn-sm" style="margin-top:16px; width:100%; border-color:var(--accent-cyan); color:var(--accent-cyan)" onclick="closeSimulateAlert(); window.scrollTo(0, document.body.scrollHeight);">
+              Open Full IR Playbook ↓
+            </button>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Create Results HTML
+    const resultHtml = `
+      <div class="sim-verdict-box">
+        <div class="sim-verdict-icon">🚨</div>
+        <div style="flex:1">
+          <div class="sim-verdict-title" style="color:#ff6b6b; font-weight:800; font-size:1.2rem; letter-spacing:0.5px">ALERT TRIGGERED</div>
+          <div class="sim-verdict-desc" style="color:var(--text-secondary); font-size:0.85rem; margin-top:4px">
+            Mock telemetry successfully evaluated against conditions for <strong>${escHtml(rule.title)}</strong>.
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:6px; letter-spacing:1px">Severity</div>
+          <span class="badge badge-severity-${rule.severity}" style="font-size:0.85rem; padding:4px 12px">${rule.severity.toUpperCase()}</span>
+        </div>
+      </div>
+      
+      <div class="sim-grid">
+        <div class="sim-section">
+          <div class="sim-section-title">📋 Matched Event Data</div>
+          <div class="sim-json-viewer">
+            <pre>${highlightSimJson(mockEvent)}</pre>
+          </div>
+        </div>
+        ${irStepsHtml}
+      </div>
+    `;
+    
+    const container = document.getElementById('sim-result-container');
+    if(container) {
+      container.innerHTML = resultHtml;
+      container.style.display = 'block';
+    }
+  }, 1500);
+};
+
+window.closeSimulateAlert = function() {
+  const modalWrapper = document.getElementById('sim-alert-modal-wrapper');
+  if (modalWrapper) modalWrapper.innerHTML = '';
+  document.body.style.overflow = '';
+};
+
+function generateMockEvent(rule) {
+  // Mock event generation logic
+  const event = {
+    "@timestamp": new Date().toISOString(),
+    "host": {
+      "hostname": "WK-HR-04.corp.local",
+      "os": { "family": "windows", "name": "Windows 11 Enterprise" }
+    },
+    "user": {
+      "name": "j.smith",
+      "domain": "CORP"
+    },
+    "event": {
+      "action": "triggered_rule",
+      "category": ["intrusion_detection"]
+    }
+  };
+  
+  if (rule.logsource.product === 'windows') {
+    if (rule.logsource.service === 'security') {
+      event.winlog = {
+        "channel": "Security",
+        "event_id": rule.category === 'brute-force' ? 4625 : 4624,
+        "opcode": "Info"
+      };
+      event.event.action = rule.category === 'brute-force' ? "logon-failed" : "logon-success";
+    } else if (rule.logsource.service === 'sysmon') {
+      event.winlog = { "channel": "Microsoft-Windows-Sysmon/Operational", "event_id": 1 };
+      event.process = {
+        "name": "powershell.exe",
+        "command_line": "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -EncodedCommand JABz...",
+        "parent": { "name": "cmd.exe" }
+      };
+    } else {
+      event.winlog = { "channel": "Application", "event_id": 1000 };
+    }
+  } else if (rule.logsource.product === 'aws' || rule.category === 'cloud-threats') {
+    event.cloud = { "provider": "aws", "region": "us-east-1" };
+    event.aws = {
+      "cloudtrail": {
+        "event_source": "iam.amazonaws.com",
+        "event_name": "CreateAccessKey",
+        "user_identity": { "type": "IAMUser", "arn": "arn:aws:iam::123456789012:user/admin" }
+      }
+    };
+    event.source = { "ip": "185.153.196.22" };
+  } else if (rule.logsource.category === 'network_traffic' || rule.category === 'command-control') {
+    event.network = {
+      "transport": "tcp",
+      "protocol": "http",
+      "direction": "outbound"
+    };
+    event.source = { "ip": "10.0.5.55", "port": 50552 };
+    event.destination = { "ip": "45.133.20.11", "port": 443, "domain": "cdn-update-auth.com" };
+    event.http = { "request": { "method": "POST" } };
+  } else {
+    // Generic fallback
+    event.message = `Suspicious behavior detected matching rule: ${rule.title}`;
+    if (rule.techniqueId) event.threat = { "technique": { "id": rule.techniqueId } };
+  }
+  
+  // Rule metadata
+  event.rule = {
+    "name": rule.title,
+    "uuid": rule.id,
+    "category": rule.category,
+    "severity": rule.severity
+  };
+  
+  return event;
+}
+
+function highlightSimJson(obj) {
+  const jsonStr = JSON.stringify(obj, null, 2);
+  return jsonStr.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+    let cls = 'yaml-number';
+    if (/^"/.test(match)) {
+      if (/:$/.test(match)) {
+        return '<span class="yaml-key">' + escHtml(match.replace(/:$/, '')) + '</span><span style="color:var(--text-muted)">:</span>';
+      } else {
+        cls = 'yaml-string';
+      }
+    } else if (/true|false/.test(match)) {
+      cls = 'yaml-bool';
+    } else if (/null/.test(match)) {
+      cls = 'yaml-comment';
+    }
+    return '<span class="' + cls + '">' + escHtml(match) + '</span>';
+  });
+}
 
 // Boot
 document.addEventListener('DOMContentLoaded', init);
