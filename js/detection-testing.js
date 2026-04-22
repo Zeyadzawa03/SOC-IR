@@ -582,6 +582,8 @@ const DetectionValidator = {
       severityCorrect:        this._chkSeverity(tc, rule),
       splunkConsistent:       this._chkSplunk(rule),
       qradarConsistent:       this._chkQRadar(rule),
+      wazuhConsistent:        this._chkWazuh(rule),
+      crossSiemParity:        this._chkCrossSIEM(rule),
       ruleAssociationCorrect: this._chkAssociation(tc, rule)
     };
     const values = Object.values(checks);
@@ -648,6 +650,11 @@ const DetectionValidator = {
     return { passed:ok, label:`Severity level correct (expected: ${exp})`, detail: ok ? `Rule severity '${rule.severity}' matches` : `Mismatch — rule: '${rule.severity}', expected: '${exp}'` };
   },
   _chkSplunk(rule) {
+    if (typeof ValidationEngine !== 'undefined') {
+      const v = ValidationEngine.validateSplunk(rule);
+      const ok = v.status === 'valid' || v.status === 'warning';
+      return { passed:ok, label:'Splunk SPL query validated by engine', detail: ok ? `SPL valid — score: ${v.score}%, alignment: ${v.alignment||'N/A'}%` : `SPL issues: ${v.issues.join('; ')}` };
+    }
     const spl = rule.splunkQuery||'';
     if (!spl) return { passed:false, label:'Splunk SPL query exists and is consistent with Sigma logic', detail:'No Splunk SPL query defined for this rule' };
     const yaml = rule.sigmaYaml||'';
@@ -658,6 +665,11 @@ const DetectionValidator = {
     return { passed:ok, label:'Splunk SPL reflects Sigma rule detection logic', detail: ok ? `SPL defined; ${pct}% keyword alignment with Sigma YAML` : `Low Splunk/Sigma alignment (${pct}%) — review that SPL covers same event IDs and conditions` };
   },
   _chkQRadar(rule) {
+    if (typeof ValidationEngine !== 'undefined') {
+      const v = ValidationEngine.validateQRadar(rule);
+      const ok = v.status === 'valid' || v.status === 'warning';
+      return { passed:ok, label:'QRadar AQL query validated by engine', detail: ok ? `AQL valid — score: ${v.score}%, alignment: ${v.alignment||'N/A'}%` : `AQL issues: ${v.issues.join('; ')}` };
+    }
     const aql = rule.qradarQuery||'';
     if (!aql) return { passed:false, label:'QRadar AQL query exists and is consistent with Sigma logic', detail:'No QRadar AQL query defined for this rule' };
     const yaml = rule.sigmaYaml||'';
@@ -666,6 +678,23 @@ const DetectionValidator = {
     const pct = kw.length > 0 ? Math.round((overlap/kw.length)*100) : 80;
     const ok = aql.length > 30 && (pct >= 25 || aql.length > 100);
     return { passed:ok, label:'QRadar AQL reflects Sigma rule detection logic', detail: ok ? `AQL defined; ${pct}% keyword alignment with Sigma YAML` : `Low QRadar/Sigma alignment (${pct}%) — review that AQL covers same event IDs and conditions` };
+  },
+  _chkWazuh(rule) {
+    if (typeof ValidationEngine !== 'undefined') {
+      const v = ValidationEngine.validateWazuh(rule);
+      if (v.status === 'correlation_required') return { passed:true, label:'Wazuh: multi-event correlation required', detail:'Rule requires Wazuh decoder/rule correlation — not a single-query detection' };
+      const ok = v.status === 'valid' || v.status === 'warning';
+      return { passed:ok, label:'Wazuh KQL query validated by engine', detail: ok ? `Wazuh valid — score: ${v.score}%` : `Wazuh issues: ${v.issues.join('; ')}` };
+    }
+    return { passed:true, label:'Wazuh validation skipped (engine not loaded)', detail:'ValidationEngine not available' };
+  },
+  _chkCrossSIEM(rule) {
+    if (typeof ValidationEngine !== 'undefined') {
+      const v = ValidationEngine.checkCrossConsistency(rule);
+      const ok = v.status === 'consistent';
+      return { passed:ok, label:'Cross-SIEM consistency check', detail: ok ? `All SIEMs consistent — coverage: ${v.coverage}/3` : `Divergences: ${v.issues.join('; ')}` };
+    }
+    return { passed:true, label:'Cross-SIEM check skipped (engine not loaded)', detail:'ValidationEngine not available' };
   },
   _chkAssociation(tc, rule) {
     const exp = tc.expectedOutput?.correctRuleAssociation;

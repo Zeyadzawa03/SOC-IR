@@ -74,6 +74,11 @@
         <span class="nav-icon">🖥️</span>
         Assets & Identity
       </div>
+      <div class="nav-section-label">Splunk Intelligence</div>
+      <div class="nav-item" data-page="splunk-intelligence">
+        <span class="nav-icon">📊</span>
+        Splunk Intelligence
+      </div>
       <div class="nav-section-label">System Intelligence</div>
       <div class="nav-item" data-page="system-intelligence">
         <span class="nav-icon">🖥️</span>
@@ -84,6 +89,10 @@
         <span class="nav-icon">&#129514;</span>
         Detection Testing
       </div>
+      <div class="nav-item" data-page="coverage-confidence">
+        <span class="nav-icon">🏆</span>
+        Coverage & Confidence
+      </div>
       <div class="nav-section-label">Info</div>
       <div class="nav-item" onclick="showAboutModal()">
         <span class="nav-icon">ℹ️</span>
@@ -91,7 +100,7 @@
       </div>
     </div>
     <div class="sidebar-footer">
-      SigmaGuard v4.0<br>
+      SigmaGuard v5.0<br>
       <span style="font-size:0.65rem">Blue Team Detection & Response Platform</span>
     </div>
   </nav>
@@ -159,21 +168,30 @@
 <script src="js/sigma-rules-part9.js"></script>
 <script src="js/sigma-rules-part10.js"></script>
 <script src="js/sigma-rules-part8.js"></script>
+<script src="js/sigma-rules-part11.js"></script>
+<script src="js/sigma-rules-part12.js"></script>
+<script src="js/sigma-rules-part13.js"></script>
 <script src="js/sigma-converter.js"></script>
 <script src="js/sigma-rules-queries.js"></script>
+<script src="js/sigma-rules-queries-ext.js"></script>
 <script src="js/cve-data.js"></script>
 <script src="js/threat-intel.js"></script>
 <script src="js/ir-data.js"></script>
 <script src="js/hunting-data.js"></script>
+<script src="js/hunting-queries-advanced.js"></script>
 <script src="js/forensics-data.js"></script>
 <script src="js/correlation-engine.js"></script>
 <script src="js/asset-context.js"></script>
+<script src="js/splunk-intelligence-data.js"></script>
+<script src="js/splunk-intelligence-page.js"></script>
 <script src="js/system-intelligence-data.js"></script>
 <script src="js/system-intelligence-page.js"></script>
+<script src="js/validation-engine.js"></script>
 <script src="js/app.js"></script>
 <script src="js/blue-team-pages.js"></script>
 <script src="js/detection-testing.js"></script>
 <script src="js/detection-testing-page.js"></script>
+<script src="js/coverage-dashboard-page.js"></script>
 
 <script>
 // ── Modal Functions ──
@@ -253,7 +271,7 @@ function showAboutModal() {
       <div style="font-size:3rem;margin-bottom:12px">🛡️</div>
       <div style="font-size:1.3rem;font-weight:800;color:var(--text-primary)">SigmaGuard</div>
       <div style="font-size:0.82rem;color:var(--text-secondary);margin:4px 0">Interactive Sigma Detection & Threat Intelligence Platform</div>
-      <div style="font-size:0.72rem;color:var(--text-muted)">Version 2.0</div>
+      <div style="font-size:0.72rem;color:var(--text-muted)">Version 5.0 — Detection Coverage Expansion & Validation Supremacy</div>
     </div>
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border-primary)">
       <div class="info-box info">

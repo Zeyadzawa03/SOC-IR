@@ -151,10 +151,20 @@ function render() {
       else content.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🧪</div><div class="empty-state-text">Detection Testing module loading...</div></div>';
       breadcrumb.innerHTML = 'Platform <span class="separator">›</span> <span class="current">Detection Testing</span>';
       break;
+    case 'splunk-intelligence':
+      if (typeof renderSplunkIntelligencePage === 'function') renderSplunkIntelligencePage(content);
+      else content.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-text">Splunk Intelligence module loading...</div></div>';
+      breadcrumb.innerHTML = 'Platform <span class="separator">›</span> <span class="current">Splunk Intelligence</span>';
+      break;
     case 'system-intelligence':
       if (typeof renderSystemIntelligencePage === 'function') renderSystemIntelligencePage(content);
       else content.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🖥️</div><div class="empty-state-text">System Intelligence module loading...</div></div>';
       breadcrumb.innerHTML = 'Platform <span class="separator">›</span> <span class="current">System Intelligence</span>';
+      break;
+    case 'coverage-confidence':
+      if (typeof renderCoverageConfidencePage === 'function') renderCoverageConfidencePage();
+      else content.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏆</div><div class="empty-state-text">Coverage & Confidence module loading...</div></div>';
+      breadcrumb.innerHTML = 'Platform <span class="separator">›</span> <span class="current">Coverage & Confidence</span>';
       break;
     default: renderDashboard(content);
   }
@@ -287,6 +297,43 @@ function renderDashboard(el) {
           </table>
         </div>
       </div>
+      ${(function(){
+        if(typeof ValidationEngine==='undefined') return '';
+        const s=ValidationEngine.getSummary();
+        const accPct=Math.round((s.accepted/s.totalRules)*100);
+        const splPct=Math.round((s.splunkValid/s.totalRules)*100);
+        const qrPct=Math.round((s.qradarValid/s.totalRules)*100);
+        const crossPct=Math.round((s.crossConsistent/s.totalRules)*100);
+        return `<div class="card full-width">
+          <div class="card-header"><span class="card-title">🏆 Platform Health — Validation Engine</span><button class="header-btn" onclick="navigate('coverage-confidence')">Coverage Dashboard →</button></div>
+          <div class="card-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px">
+              <div style="text-align:center;padding:12px;background:rgba(16,185,129,0.06);border-radius:var(--radius-md);border:1px solid rgba(16,185,129,0.15)">
+                <div style="font-size:1.6rem;font-weight:800;color:#34d399">${accPct}%</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">Accepted</div>
+              </div>
+              <div style="text-align:center;padding:12px;background:rgba(0,212,255,0.06);border-radius:var(--radius-md);border:1px solid rgba(0,212,255,0.15)">
+                <div style="font-size:1.6rem;font-weight:800;color:#22d3ee">${s.avgConfidence}%</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">Avg Confidence</div>
+              </div>
+              <div style="text-align:center;padding:12px;background:rgba(139,92,246,0.06);border-radius:var(--radius-md);border:1px solid rgba(139,92,246,0.15)">
+                <div style="font-size:1.6rem;font-weight:800;color:#a78bfa">${splPct}%</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">Splunk Valid</div>
+              </div>
+              <div style="text-align:center;padding:12px;background:rgba(245,158,11,0.06);border-radius:var(--radius-md);border:1px solid rgba(245,158,11,0.15)">
+                <div style="font-size:1.6rem;font-weight:800;color:#fbbf24">${crossPct}%</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">Cross-SIEM Parity</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <span class="val-stat-chip val-accepted">✅ ${s.accepted} Accepted</span>
+              <span class="val-stat-chip val-review">⚠️ ${s.needsReview} Review</span>
+              <span class="val-stat-chip val-rejected">❌ ${s.rejected} Rejected</span>
+              <span class="val-stat-chip val-correlation">🔗 ${s.wazuhCorrelation} Correlation</span>
+            </div>
+          </div>
+        </div>`;
+      })()}
     </div>`;
   // Animate bars
   setTimeout(() => { $$('.chart-bar-fill').forEach(b => { const w = b.style.width; b.style.width = '0%'; requestAnimationFrame(() => b.style.width = w); }); }, 100);
@@ -350,6 +397,7 @@ function renderRulesExplorer(el) {
             <span class="badge badge-technique">${r.techniqueId} - ${escHtml(r.techniqueName)}</span>
             ${r.category ? `<span class="badge badge-category" style="background:${getCategoryMeta(r.category).color}22;color:${getCategoryMeta(r.category).color};border:1px solid ${getCategoryMeta(r.category).color}44">${getCategoryMeta(r.category).icon} ${getCategoryLabel(r.category)}</span>` : ''}
             ${r.threatIntel.cisaKev ? '<span class="badge badge-kev">⚠ CISA KEV</span>' : ''}
+            ${(function(){if(typeof ValidationEngine==='undefined')return '';const v=ValidationEngine.validateRule(r);const cl=ValidationEngine.getConfidenceLabel(v.confidenceScore);return '<span class="badge conf-badge '+cl.cls+'" style="font-size:0.62rem;padding:2px 8px">'+cl.label+' '+v.confidenceScore+'%</span>';})()}
           </div>
           <div class="rule-card-desc">${escHtml(r.description)}</div>
         </div>`).join('') :
@@ -401,6 +449,21 @@ function renderRuleDetail(el) {
           ${rule.threatIntel.cisaKev ? '<span class="badge badge-kev">⚠ CISA KEV</span>' : ''}
         </div>
         <p style="color:var(--text-secondary);font-size:0.88rem;line-height:1.7;margin-top:12px">${escHtml(rule.description)}</p>
+        ${(function(){
+          if(typeof ValidationEngine==='undefined') return '';
+          const v=ValidationEngine.validateRule(rule);
+          const cl=ValidationEngine.getConfidenceLabel(v.confidenceScore);
+          return `<div class="vb-panel">
+            <div class="vb-header"><span class="vb-title">🔒 Validation Status</span><span class="conf-badge ${cl.cls}">${cl.label} — ${v.confidenceScore}%</span></div>
+            <div class="vb-badges">
+              <span class="vb-chip vb-${v.sigma.status==='valid'?'pass':'warn'}">${ValidationEngine.getStatusIcon(v.sigma.status)} Sigma ${v.sigma.score}%</span>
+              <span class="vb-chip vb-${v.splunk.status==='valid'?'pass':v.splunk.status==='missing'?'fail':'warn'}">${ValidationEngine.getStatusIcon(v.splunk.status)} Splunk ${v.splunk.score}%</span>
+              <span class="vb-chip vb-${v.qradar.status==='valid'?'pass':v.qradar.status==='missing'?'fail':'warn'}">${ValidationEngine.getStatusIcon(v.qradar.status)} QRadar ${v.qradar.score}%</span>
+              <span class="vb-chip vb-${v.wazuh.status==='valid'?'pass':v.wazuh.status==='correlation_required'?'info':'warn'}">${ValidationEngine.getStatusIcon(v.wazuh.status)} Wazuh ${v.wazuh.score}%</span>
+              <span class="vb-chip vb-${v.crossConsistency.status==='consistent'?'pass':'warn'}">${ValidationEngine.getStatusIcon(v.crossConsistency.status)} Cross-SIEM ${v.crossConsistency.score}%</span>
+            </div>
+            ${v.sigma.issues.length||v.splunk.issues.length||v.qradar.issues.length?`<div class="vb-issues">${[...v.sigma.issues,...v.splunk.issues,...v.qradar.issues,...v.wazuh.issues,...v.crossConsistency.issues].slice(0,3).map(i=>'<div class="vb-issue">⚠ '+escHtml(i)+'</div>').join('')}</div>`:''}</div>`;
+        })()}
         <div class="rule-detail-info">
           <div class="detail-info-item"><span class="detail-info-label">Rule ID</span><span class="detail-info-value font-mono">${rule.id}</span></div>
           <div class="detail-info-item"><span class="detail-info-label">Author</span><span class="detail-info-value">${escHtml(rule.author)}</span></div>
@@ -429,6 +492,7 @@ function renderRuleDetail(el) {
           <div class="siem-tabs">
             <button class="siem-tab active" data-siem="splunk" onclick="switchSiemTab(this,'splunk','${rule.id}')">Splunk SPL</button>
             <button class="siem-tab" data-siem="qradar" onclick="switchSiemTab(this,'qradar','${rule.id}')">IBM QRadar AQL</button>
+            <button class="siem-tab" data-siem="wazuh" onclick="switchSiemTab(this,'wazuh','${rule.id}')">Wazuh KQL</button>
           </div>
           <div class="siem-output" id="siem-output-${rule.id}">
             <div class="code-block">
@@ -514,6 +578,43 @@ function renderRuleDetail(el) {
         ${rule.threatIntel.cisaKev ? `<div class="info-box danger mb-md"><div class="info-box-title">⚠ CISA Known Exploited Vulnerability</div>This detection is linked to vulnerabilities in the CISA Known Exploited Vulnerabilities catalog. Federal agencies are required to remediate these. Prioritize patching and detection deployment.</div>` : ''}
         ${rule.threatIntel.campaigns.length ? `<div class="mb-md"><strong style="color:var(--text-secondary);font-size:0.82rem">Related Campaigns:</strong> ${rule.threatIntel.campaigns.map(c => `<span class="badge badge-tactic">${escHtml(c)}</span>`).join(' ')}</div>` : ''}
       </div>
+
+      <!-- Splunk Intelligence Context -->
+      ${(function(){
+        const splunkTips = typeof getSplunkTipsForCategory !== 'undefined' ? getSplunkTipsForCategory(rule.category) : null;
+        if(!splunkTips) return '';
+        return `<div class="detail-section">
+          <h2 class="detail-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span><span class="section-icon">🧠</span> Splunk Investigation Intelligence</span>
+            <button class="btn-sm" onclick="if(window.navigate) window.navigate('splunk-intelligence')" style="background: rgba(168, 85, 247, 0.1); color: var(--accent-purple); border: 1px solid rgba(168, 85, 247, 0.3);">📊 View Splunk Intelligence Page</button>
+          </h2>
+          <div style="display:grid; grid-template-columns: 1fr; gap: 12px;">
+            <div class="info-box" style="border-color: var(--accent-purple); background: var(--bg-card); color: var(--text-secondary);">
+              <div class="info-box-title" style="color: var(--accent-purple);">💡 Triage Tips (${escHtml(splunkTips.name)})</div>
+              <ul class="detail-list" style="margin-top: 8px;">
+                ${splunkTips.tips.map(t => `<li>${escHtml(t)}</li>`).join('')}
+              </ul>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 12px; margin-top: 8px;">
+              ${splunkTips.queries.map(q => `
+                <div class="card" style="border-left: 2px solid ${q.type === 'Detection' ? 'var(--accent-red)' : 'var(--accent-purple)'}; padding: 12px;">
+                  <div style="display:flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                    <h4 style="margin:0; font-size: 0.95rem; color: var(--text-primary);">${escHtml(q.name)}</h4>
+                    <span class="badge" style="background: ${q.type === 'Detection' ? 'rgba(239,68,68,0.1)' : 'rgba(168,85,247,0.1)'}; color: ${q.type === 'Detection' ? 'var(--accent-red)' : 'var(--accent-purple)'}; font-size: 0.65rem;">${q.type}</span>
+                  </div>
+                  <div class="code-block" style="margin:0; padding:8px; border-radius:4px;">
+                    <div class="code-block-header" style="padding-bottom: 4px; margin-bottom: 4px; border-bottom: 1px solid var(--border-light);">
+                      <span class="code-block-lang" style="font-size:0.7rem;">Splunk SPL</span>
+                      <button class="code-block-copy" onclick="if(window.copyToClipboard){window.copyToClipboard('${(q.query).replace(/'/g,"\\'").replace(/"/g,"&quot;")}', this)}else{navigator.clipboard.writeText('${(q.query).replace(/'/g,"\\'")}')}" style="font-size:0.65rem; padding: 2px 4px;">Copy</button>
+                    </div>
+                    <pre style="white-space: pre-wrap; word-break: break-all; margin:0; padding:0; background:transparent; font-size:0.8rem;">${escHtml(q.query)}</pre>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>`;
+      })()}
 
       <!-- IR Playbook Section -->
       ${(function(){
@@ -619,20 +720,60 @@ function switchSiemTab(btn, siem, ruleId) {
   btn.classList.add('active');
   const output = document.getElementById('siem-output-' + ruleId);
   if (!output) return;
-  const query = siem === 'splunk' ? (rule.splunkQuery || 'No Splunk query available.') : (rule.qradarQuery || 'No QRadar query available.');
-  const label = siem === 'splunk' ? 'Splunk SPL' : 'IBM QRadar AQL';
+  
+  let query = 'Conversion not available.';
+  let label = '';
+  let prop = '';
+  
+  if (siem === 'splunk') {
+    query = rule.splunkQuery || 'No Splunk query available.';
+    label = 'Splunk SPL';
+    prop = 'splunkQuery';
+  } else if (siem === 'qradar') {
+    query = rule.qradarQuery || 'No QRadar query available.';
+    label = 'IBM QRadar AQL';
+    prop = 'qradarQuery';
+  } else if (siem === 'wazuh') {
+    query = rule.wazuhQuery || (typeof SigmaConverter !== 'undefined' ? SigmaConverter.toWazuh(rule) : 'Wazuh conversion engine missing.');
+    label = 'Wazuh KQL';
+    prop = 'wazuhQuery';
+    // Dynamically assign so copyToClipboard grabs it later
+    if (!rule.wazuhQuery && typeof SigmaConverter !== 'undefined') rule.wazuhQuery = query;
+  }
+  
+  let badgeHtml = '';
+  let statusText = ' — Production Ready';
+  
+  if (siem === 'wazuh') {
+    if (query.startsWith('/* Conversion Failed: Correlation Required */')) {
+       statusText = '';
+       badgeHtml = '<span class="badge" style="background:rgba(245,158,11,0.1);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);margin-left:8px;font-size:0.75rem;">Correlation Required</span>';
+    } else if (query.startsWith('/* Conversion Failed: Requires Review */')) {
+       statusText = '';
+       badgeHtml = '<span class="badge" style="background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);margin-left:8px;font-size:0.75rem;">Needs Review</span>';
+    } else {
+       statusText = '';
+       badgeHtml = '<span class="badge" style="background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.3);margin-left:8px;font-size:0.75rem;">Valid</span>';
+    }
+  }
+  
   output.innerHTML = `
     <div class="code-block">
       <div class="code-block-header">
-        <span class="code-block-lang">${label} — Production Ready</span>
-        <button class="code-block-copy" onclick="copyToClipboard(getRuleById('${ruleId}').${siem === 'splunk' ? 'splunkQuery' : 'qradarQuery'} || '', this)">Copy</button>
+        <span class="code-block-lang" style="display:inline-flex;align-items:center;">${label}${statusText}${badgeHtml}</span>
+        <button class="code-block-copy" onclick="copyToClipboard(getSiemQuery('${ruleId}','${siem}'), this)">Copy</button>
       </div>
       <pre>${escHtml(query)}</pre>
     </div>`;
 }
+
 function getSiemQuery(ruleId, siem) {
   const rule = getRuleById(ruleId);
-  return siem === 'splunk' ? (rule?.splunkQuery || '') : (rule?.qradarQuery || '');
+  if(!rule) return '';
+  if (siem === 'splunk') return rule.splunkQuery || '';
+  if (siem === 'qradar') return rule.qradarQuery || '';
+  if (siem === 'wazuh') return rule.wazuhQuery || (typeof SigmaConverter !== 'undefined' ? SigmaConverter.toWazuh(rule) : '');
+  return '';
 }
 window.switchSiemTab = switchSiemTab;
 window.getSiemQuery = getSiemQuery;
@@ -1606,6 +1747,9 @@ window.escHtml = escHtml;
 window.getCategoryMeta = getCategoryMeta;
 window.getCategoryLabel = getCategoryLabel;
 window.SIGMA_RULES = SIGMA_RULES;
+window.CATEGORY_META = CATEGORY_META;
+window.MITRE_TACTICS = typeof MITRE_TACTICS !== 'undefined' ? MITRE_TACTICS : [];
+window.MITRE_TECHNIQUES = typeof MITRE_TECHNIQUES !== 'undefined' ? MITRE_TECHNIQUES : {};
 window.CATEGORIES = typeof ATTACK_CATEGORIES !== 'undefined' ? ATTACK_CATEGORIES : [];
 
 // ══════════════════════════════════════════════

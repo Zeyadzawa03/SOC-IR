@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html><head><title>Analysis</title></head>
+<body>
+<pre id="out">Loading...</pre>
+<script src="js/mitre-data.js"></script>
+<script src="js/sigma-rules-part1.js"></script>
+<script src="js/sigma-rules-part2.js"></script>
+<script src="js/sigma-rules-part3.js"></script>
+<script src="js/sigma-rules-part4.js"></script>
+<script src="js/sigma-rules-part5.js"></script>
+<script src="js/sigma-rules-part6.js"></script>
+<script src="js/sigma-rules-part7.js"></script>
+<script src="js/sigma-rules-part8.js"></script>
+<script src="js/sigma-rules-part9.js"></script>
+<script src="js/sigma-rules-part10.js"></script>
+<script src="js/sigma-rules-queries.js"></script>
+<script>
+const out = [];
+out.push("=== SIGMAGUARD PLATFORM ANALYSIS ===\n");
+out.push("Total Rules: " + SIGMA_RULES.length);
+
+// Category distribution
+const cats = {};
+SIGMA_RULES.forEach(r => {
+  const c = r.category || 'UNMAPPED';
+  cats[c] = (cats[c] || 0) + 1;
+});
+out.push("\n--- CATEGORY DISTRIBUTION ---");
+Object.entries(cats).sort((a,b) => b[1]-a[1]).forEach(([k,v]) => {
+  out.push("  " + k + ": " + v + " rules");
+});
+
+// Severity distribution
+const sevs = {};
+SIGMA_RULES.forEach(r => { sevs[r.severity] = (sevs[r.severity]||0)+1; });
+out.push("\n--- SEVERITY DISTRIBUTION ---");
+Object.entries(sevs).sort((a,b) => b[1]-a[1]).forEach(([k,v]) => out.push("  " + k + ": " + v));
+
+// Status distribution
+const stats = {};
+SIGMA_RULES.forEach(r => { stats[r.status] = (stats[r.status]||0)+1; });
+out.push("\n--- STATUS DISTRIBUTION ---");
+Object.entries(stats).forEach(([k,v]) => out.push("  " + k + ": " + v));
+
+// MITRE coverage
+const covered = new Set();
+SIGMA_RULES.forEach(r => { covered.add(r.techniqueId); covered.add(r.techniqueId.split('.')[0]); });
+let totalTech = 0;
+Object.values(MITRE_TECHNIQUES).forEach(techs => {
+  techs.forEach(t => { totalTech++; t.subs.forEach(() => totalTech++); });
+});
+out.push("\n--- MITRE COVERAGE ---");
+out.push("  Techniques covered: " + covered.size);
+out.push("  Total techniques: " + totalTech);
+out.push("  Coverage: " + Math.round((covered.size/totalTech)*100) + "%");
+
+// Tactic coverage
+out.push("\n--- RULES PER TACTIC ---");
+MITRE_TACTICS.forEach(t => {
+  const c = SIGMA_RULES.filter(r => r.tacticId === t.id).length;
+  out.push("  " + t.id + " " + t.name + ": " + c);
+});
+
+// SIEM query availability
+let hasSplunk=0, hasQradar=0, hasWazuh=0, noSplunk=0, noQradar=0;
+SIGMA_RULES.forEach(r => {
+  if(r.splunkQuery && r.splunkQuery.length > 10) hasSplunk++; else noSplunk++;
+  if(r.qradarQuery && r.qradarQuery.length > 10) hasQradar++; else noQradar++;
+  if(r.wazuhQuery && r.wazuhQuery.length > 10) hasWazuh++;
+});
+out.push("\n--- SIEM QUERY COVERAGE ---");
+out.push("  Splunk SPL: " + hasSplunk + " present, " + noSplunk + " missing");
+out.push("  QRadar AQL: " + hasQradar + " present, " + noQradar + " missing");
+out.push("  Wazuh (static): " + hasWazuh + " (rest use dynamic converter)");
+
+// Rules with all required fields
+let complete = 0;
+SIGMA_RULES.forEach(r => {
+  if(r.sigmaYaml && r.detectionExplanation && r.techniqueId && 
+     r.requiredLogs && r.requiredLogs.length && r.falsePositives && r.falsePositives.length &&
+     r.tuning && r.responseActions && r.responseActions.length && r.references && r.references.length)
+    complete++;
+});
+out.push("\n--- RULE COMPLETENESS ---");
+out.push("  Fully complete rules: " + complete + "/" + SIGMA_RULES.length);
+
+// ID range
+const ids = SIGMA_RULES.map(r => parseInt(r.id.replace('SR-',''))).sort((a,b)=>a-b);
+out.push("\n--- ID RANGE ---");
+out.push("  First: SR-" + String(ids[0]).padStart(4,'0'));
+out.push("  Last: SR-" + String(ids[ids.length-1]).padStart(4,'0'));
+
+// Missing categories (defined but no rules)
+const allCats = ['brute-force','ransomware','web-attacks','reconnaissance','insider-threat',
+  'cloud-threats','active-directory','email-threats','network-anomalies','endpoint-anomalies',
+  'linux-threats','windows-specific','threat-hunting','data-exfiltration','lateral-movement',
+  'privilege-escalation','credential-access','defense-evasion','persistence','execution',
+  'initial-access','command-control','collection'];
+out.push("\n--- WEAK CATEGORIES (< 5 rules) ---");
+allCats.forEach(c => {
+  const count = cats[c] || 0;
+  if(count < 5) out.push("  " + c + ": " + count + " rules (NEEDS EXPANSION)");
+});
+
+document.getElementById('out').textContent = out.join('\n');
+</script>
+</body></html>

@@ -113,81 +113,233 @@ window.filterIRBySeverity = function(sev, chip) {
 
 
 // ══════════════════════════════════════════════
-// THREAT HUNTING PAGE
+// THREAT HUNTING PAGE — Advanced Zero-Day & Behavioral Platform
 // ══════════════════════════════════════════════
 function renderThreatHuntingPage(container) {
   const hunts = typeof HUNTING_QUERIES !== 'undefined' ? HUNTING_QUERIES : [];
+  const zeroDay = hunts.filter(h => h.huntType === 'zero-day');
+  const behavioral = hunts.filter(h => h.huntType === 'behavioral' || h.huntType === 'behavior');
+  const anomaly = hunts.filter(h => h.huntType === 'anomaly');
+  const cats = [...new Set(hunts.map(h => h.category))].sort();
+  const techniques = typeof HUNT_TECHNIQUES !== 'undefined' ? HUNT_TECHNIQUES : {};
 
   container.innerHTML = `
     <div class="page-header">
       <div>
-        <h1 class="page-title"><span class="title-icon">🎯</span> Threat Hunting</h1>
-        <p class="page-subtitle">Proactive behavior-based hunting queries with Splunk SPL and QRadar AQL — linked to MITRE ATT&CK and Sigma rules</p>
+        <h1 class="page-title"><span class="title-icon">🎯</span> Advanced Threat Hunting</h1>
+        <p class="page-subtitle">Behavior-based hunting for unknown threats, zero-days, and behavioral anomalies — NOT signature-based detection</p>
       </div>
       <div class="header-stats">
-        <div class="stat-chip"><span class="stat-value">${hunts.length}</span><span class="stat-label">Hunt Queries</span></div>
-        <div class="stat-chip"><span class="stat-value">${hunts.filter(h=>h.huntType==='behavior').length}</span><span class="stat-label">Behavior</span></div>
-        <div class="stat-chip"><span class="stat-value">${hunts.filter(h=>h.huntType==='anomaly').length}</span><span class="stat-label">Anomaly</span></div>
+        <div class="stat-chip"><span class="stat-value">${hunts.length}</span><span class="stat-label">Total Hunts</span></div>
+        <div class="stat-chip"><span class="stat-value">${zeroDay.length}</span><span class="stat-label">Zero-Day</span></div>
+        <div class="stat-chip"><span class="stat-value">${behavioral.length}</span><span class="stat-label">Behavioral</span></div>
+        <div class="stat-chip"><span class="stat-value">${anomaly.length}</span><span class="stat-label">Anomaly</span></div>
+        <div class="stat-chip"><span class="stat-value">${cats.length}</span><span class="stat-label">Categories</span></div>
       </div>
     </div>
 
-    <div class="hunt-filter-bar">
-      <input type="text" id="huntSearchInput" class="search-input" placeholder="Search hunts by name, technique, or tag..." onkeyup="filterHunts()" />
-      <div class="filter-chips">
-        <span class="filter-chip active" onclick="filterHuntType('all', this)">All</span>
-        <span class="filter-chip" onclick="filterHuntType('behavior', this)">🔬 Behavior</span>
-        <span class="filter-chip" onclick="filterHuntType('anomaly', this)">📊 Anomaly</span>
-      </div>
+    <!-- Tab Navigation -->
+    <div class="corr-tabs-bar" id="huntTabsBar">
+      <button class="corr-page-tab active" data-ctab="hunt-library" onclick="switchHuntPageTab(this)">📚 Hunt Library</button>
+      <button class="corr-page-tab" data-ctab="hunt-zeroday" onclick="switchHuntPageTab(this)">🔥 Zero-Day Hunting</button>
+      <button class="corr-page-tab" data-ctab="hunt-behavioral" onclick="switchHuntPageTab(this)">🧠 Behavioral Analysis</button>
+      <button class="corr-page-tab" data-ctab="hunt-playbook" onclick="switchHuntPageTab(this)">📋 Hunt Playbook</button>
     </div>
 
-    <div class="hunt-grid" id="huntGrid">
-      ${hunts.map(h => `
-        <div class="hunt-card" data-type="${h.huntType}" data-search="${esc((h.name + ' ' + h.description + ' ' + h.tags.join(' ')).toLowerCase())}">
-          <div class="hunt-card-header">
-            <div>
-              <span class="hunt-id">${esc(h.id)}</span>
-              <span class="badge badge-${h.huntType === 'behavior' ? 'tactic' : 'technique'}">${h.huntType}</span>
-              <span class="badge badge-severity-${h.difficulty === 'High' ? 'high' : h.difficulty === 'Medium' ? 'medium' : 'low'}">${h.difficulty}</span>
-            </div>
-            <span class="hunt-freq">${esc(h.frequency)}</span>
-          </div>
-          <h3 class="hunt-card-title">${esc(h.name)}</h3>
-          <p class="hunt-card-desc">${esc(h.description)}</p>
-          
-          <div class="hunt-mitre-tag">
-            <span class="badge badge-tactic">${esc(h.mitre.tacticId)}</span>
-            <span class="badge badge-technique">${esc(h.mitre.techniqueId)}</span>
-            <span style="color:var(--text-muted);font-size:0.75rem;margin-left:0.25rem">${esc(h.mitre.techniqueName)}</span>
-          </div>
-
-          <div class="hunt-hypothesis">
-            <strong>Hypothesis:</strong> ${esc(h.hypothesis)}
-          </div>
-
-          <div class="hunt-query-tabs">
-            <button class="hunt-qtab active" onclick="switchHuntQuery(this, 'splunk')">Splunk SPL</button>
-            <button class="hunt-qtab" onclick="switchHuntQuery(this, 'qradar')">QRadar AQL</button>
-          </div>
-          <div class="hunt-query-content active" data-query="splunk">
-            <pre class="code-block"><code>${esc(h.splunkQuery)}</code></pre>
-            <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling.querySelector('code').textContent)">📋 Copy SPL</button>
-          </div>
-          <div class="hunt-query-content" data-query="qradar">
-            <pre class="code-block"><code>${esc(h.qradarQuery)}</code></pre>
-            <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling.querySelector('code').textContent)">📋 Copy AQL</button>
-          </div>
-
-          <div class="hunt-card-footer">
-            <div class="hunt-tags">${h.tags.map(t => `<span class="hunt-tag">${esc(t)}</span>`).join('')}</div>
-            <div class="hunt-data-req">
-              <strong>Data:</strong> ${h.dataRequirements.join(', ')}
-            </div>
-          </div>
+    <!-- ═══ TAB 1: Hunt Library ═══ -->
+    <div class="corr-tab-panel active" id="ctab-hunt-library">
+      <div class="hunt-filter-bar">
+        <input type="text" id="huntSearchInput" class="search-input" placeholder="Search hunts by name, technique, tag, or category..." onkeyup="filterHuntsAdvanced()" />
+        <div class="filter-chips" id="huntTypeFilters">
+          <span class="filter-chip active" onclick="filterHuntAdvType('all', this)">All</span>
+          <span class="filter-chip" onclick="filterHuntAdvType('zero-day', this)">🔥 Zero-Day</span>
+          <span class="filter-chip" onclick="filterHuntAdvType('behavioral', this)">🧠 Behavioral</span>
+          <span class="filter-chip" onclick="filterHuntAdvType('behavior', this)">🔬 Behavior</span>
+          <span class="filter-chip" onclick="filterHuntAdvType('anomaly', this)">📊 Anomaly</span>
         </div>
-      `).join('')}
+      </div>
+      <div class="hunt-category-select" style="margin-bottom:16px">
+        <select id="huntCatFilter" class="search-input" style="max-width:300px" onchange="filterHuntsAdvanced()">
+          <option value="all">All Categories</option>
+          ${cats.map(c => `<option value="${c}">${(typeof getCategoryMeta==='function'?getCategoryMeta(c).icon:'📋')} ${c.replace(/-/g,' ').replace(/\\b\\w/g,x=>x.toUpperCase())}</option>`).join('')}
+        </select>
+      </div>
+
+      ${cats.map(cat => {
+        const catHunts = hunts.filter(h => h.category === cat);
+        const catIcon = typeof getCategoryMeta === 'function' ? getCategoryMeta(cat).icon : '📋';
+        const catColor = typeof getCategoryMeta === 'function' ? getCategoryMeta(cat).color : '#64748b';
+        return `
+        <div class="hunt-category-group" data-cat="${cat}">
+          <div class="hunt-category-header" style="border-left:3px solid ${catColor}">
+            <span class="hunt-category-icon">${catIcon}</span>
+            <span class="hunt-category-name">${cat.replace(/-/g,' ').replace(/\\b\\w/g,x=>x.toUpperCase())}</span>
+            <span class="hunt-category-count">${catHunts.length} hunts</span>
+          </div>
+          <div class="hunt-grid" id="huntGrid">
+            ${catHunts.map(h => _renderHuntCard(h)).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <!-- ═══ TAB 2: Zero-Day Hunting ═══ -->
+    <div class="corr-tab-panel" id="ctab-hunt-zeroday">
+      <div class="info-box info" style="margin-bottom:20px">
+        <div class="info-box-title">🔥 Zero-Day & Unknown Threat Detection</div>
+        These hunts detect <strong>unknown threats</strong> that signature-based rules cannot catch. They use <strong>statistical analysis</strong>, <strong>baseline comparison</strong>, and <strong>frequency analysis</strong> to identify anomalous activity that deviates from normal behavior patterns. Zero-day hunts answer: <em>"What has NEVER been seen before?"</em>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px">
+        ${Object.entries(techniques).map(([k,v]) => `
+          <div style="padding:14px;background:var(--bg-card);border:1px solid var(--border-primary);border-radius:var(--radius-md)">
+            <div style="font-size:1.2rem;margin-bottom:4px">${v.icon}</div>
+            <div style="font-size:0.82rem;font-weight:700;color:var(--text-primary)">${v.label}</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px">${v.desc}</div>
+          </div>`).join('')}
+      </div>
+      <div class="hunt-grid">
+        ${[...zeroDay, ...anomaly].map(h => _renderHuntCard(h)).join('')}
+      </div>
+    </div>
+
+    <!-- ═══ TAB 3: Behavioral Analysis ═══ -->
+    <div class="corr-tab-panel" id="ctab-hunt-behavioral">
+      <div class="info-box info" style="margin-bottom:20px">
+        <div class="info-box-title">🧠 Behavioral Anomaly Detection</div>
+        These hunts detect threats through <strong>behavioral patterns</strong> rather than signatures: abnormal login times, unusual process chains, suspicious network patterns, and credential abuse spikes. They answer: <em>"What is happening that is DIFFERENT from normal?"</em>
+      </div>
+      <div class="hunt-grid">
+        ${behavioral.map(h => _renderHuntCard(h)).join('')}
+      </div>
+    </div>
+
+    <!-- ═══ TAB 4: Hunt Playbook ═══ -->
+    <div class="corr-tab-panel" id="ctab-hunt-playbook">
+      <div class="info-box info" style="margin-bottom:20px">
+        <div class="info-box-title">📋 Threat Hunting Methodology</div>
+        A structured approach to proactive threat hunting. Each hunt follows the <strong>Hypothesis → Data Collection → Analysis → Findings</strong> cycle.
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px">
+        <div class="hunt-method-card">
+          <div class="hunt-method-step">1</div>
+          <h3>Form Hypothesis</h3>
+          <p>Start with an intelligence-driven or anomaly-driven hypothesis about adversary behavior in your environment.</p>
+        </div>
+        <div class="hunt-method-card">
+          <div class="hunt-method-step">2</div>
+          <h3>Collect Data</h3>
+          <p>Execute hunt queries across Splunk, QRadar, and Wazuh to gather relevant telemetry for analysis.</p>
+        </div>
+        <div class="hunt-method-card">
+          <div class="hunt-method-step">3</div>
+          <h3>Analyze Results</h3>
+          <p>Apply statistical analysis, baseline comparison, and behavioral indicators to identify true anomalies.</p>
+        </div>
+        <div class="hunt-method-card">
+          <div class="hunt-method-step">4</div>
+          <h3>Act on Findings</h3>
+          <p>Escalate confirmed threats to IR, create new detection rules, or refine existing baselines.</p>
+        </div>
+      </div>
+      <h2 style="font-size:1.1rem;font-weight:700;color:var(--text-primary);margin-bottom:12px">📊 Category Hunt Coverage</h2>
+      <div class="table-wrapper">
+        <table class="coverage-table">
+          <thead><tr><th>Category</th><th>Hunts</th><th>Types</th><th>Techniques</th></tr></thead>
+          <tbody>
+            ${cats.map(cat => {
+              const ch = hunts.filter(h => h.category === cat);
+              const types = [...new Set(ch.map(h => h.huntType))];
+              const techs = [...new Set(ch.map(h => h.technique).filter(Boolean))];
+              const catIcon = typeof getCategoryMeta === 'function' ? getCategoryMeta(cat).icon : '📋';
+              return `<tr>
+                <td style="font-weight:600;color:var(--text-primary)">${catIcon} ${cat.replace(/-/g,' ').replace(/\\b\\w/g,x=>x.toUpperCase())}</td>
+                <td><strong>${ch.length}</strong></td>
+                <td>${types.map(t => '<span class="hunt-tag">' + t + '</span>').join(' ')}</td>
+                <td>${techs.map(t => '<span class="hunt-tag">' + t + '</span>').join(' ')}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
     </div>
   `;
 }
+
+function _renderHuntCard(h) {
+  const hasWazuh = h.wazuhQuery && h.wazuhQuery.length > 5;
+  const hasInvestigation = h.investigationSteps && h.investigationSteps.length > 0;
+  const hasIndicators = h.behavioralIndicators && h.behavioralIndicators.length > 0;
+  const techniqueLabel = h.technique ? h.technique.replace(/-/g,' ').replace(/\b\w/g,x=>x.toUpperCase()) : '';
+  const typeIcon = h.huntType==='zero-day'?'🔥':h.huntType==='behavioral'?'🧠':h.huntType==='behavior'?'🔬':'📊';
+  return `
+    <div class="hunt-card" data-type="${h.huntType}" data-cat="${h.category}" data-search="${esc((h.name+' '+h.description+' '+h.tags.join(' ')+' '+h.category+' '+(h.technique||'')).toLowerCase())}">
+      <div class="hunt-card-header">
+        <div>
+          <span class="hunt-id">${esc(h.id)}</span>
+          <span class="badge badge-${h.huntType==='zero-day'?'severity-critical':h.huntType==='behavioral'||h.huntType==='behavior'?'tactic':'technique'}">${typeIcon} ${h.huntType}</span>
+          <span class="badge badge-severity-${h.difficulty==='High'?'high':h.difficulty==='Medium'?'medium':'low'}">${h.difficulty}</span>
+          ${techniqueLabel ? `<span class="badge" style="background:rgba(139,92,246,0.1);color:#a78bfa;border:1px solid rgba(139,92,246,0.2);font-size:0.62rem">${techniqueLabel}</span>` : ''}
+        </div>
+        <span class="hunt-freq">${esc(h.frequency)}</span>
+      </div>
+      <h3 class="hunt-card-title">${esc(h.name)}</h3>
+      <p class="hunt-card-desc">${esc(h.description)}</p>
+      
+      <div class="hunt-mitre-tag">
+        <span class="badge badge-tactic">${esc(h.mitre.tacticId)}</span>
+        <span class="badge badge-technique">${esc(h.mitre.techniqueId)}</span>
+        <span style="color:var(--text-muted);font-size:0.75rem;margin-left:0.25rem">${esc(h.mitre.techniqueName)}</span>
+      </div>
+
+      <div class="hunt-hypothesis">
+        <strong>Hypothesis:</strong> ${esc(h.hypothesis)}
+      </div>
+
+      ${hasIndicators ? `<div class="hunt-indicators">
+        <strong>Behavioral Indicators:</strong>
+        <ul class="hunt-indicator-list">${h.behavioralIndicators.slice(0,4).map(i => '<li>'+esc(i)+'</li>').join('')}</ul>
+      </div>` : ''}
+
+      <div class="hunt-query-tabs">
+        <button class="hunt-qtab active" onclick="switchHuntQuery(this, 'splunk')">Splunk SPL</button>
+        <button class="hunt-qtab" onclick="switchHuntQuery(this, 'qradar')">QRadar AQL</button>
+        ${hasWazuh ? `<button class="hunt-qtab" onclick="switchHuntQuery(this, 'wazuh')">Wazuh</button>` : ''}
+      </div>
+      <div class="hunt-query-content active" data-query="splunk">
+        <pre class="code-block"><code>${esc(h.splunkQuery)}</code></pre>
+        <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling.querySelector('code').textContent)">📋 Copy SPL</button>
+      </div>
+      <div class="hunt-query-content" data-query="qradar">
+        <pre class="code-block"><code>${esc(h.qradarQuery)}</code></pre>
+        <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling.querySelector('code').textContent)">📋 Copy AQL</button>
+      </div>
+      ${hasWazuh ? `<div class="hunt-query-content" data-query="wazuh">
+        <pre class="code-block"><code>${esc(h.wazuhQuery)}</code></pre>
+        <button class="copy-btn" onclick="copyToClipboard(this.previousElementSibling.querySelector('code').textContent)">📋 Copy Wazuh</button>
+      </div>` : ''}
+
+      ${hasInvestigation ? `<div class="hunt-investigation">
+        <strong>Investigation Steps:</strong>
+        <ol class="hunt-invest-list">${h.investigationSteps.slice(0,4).map(s => '<li>'+esc(s)+'</li>').join('')}</ol>
+      </div>` : ''}
+
+      <div class="hunt-card-footer">
+        <div class="hunt-tags">${h.tags.map(t => `<span class="hunt-tag">${esc(t)}</span>`).join('')}</div>
+        <div class="hunt-data-req">
+          <strong>Data:</strong> ${(h.dataRequirements||[]).join(', ')}
+        </div>
+      </div>
+    </div>`;
+}
+
+window.switchHuntPageTab = function(btn) {
+  const tabId = btn.dataset.ctab;
+  document.querySelectorAll('#huntTabsBar .corr-page-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.corr-tab-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('ctab-' + tabId);
+  if (panel) panel.classList.add('active');
+};
 
 window.switchHuntQuery = function(btn, platform) {
   const card = btn.closest('.hunt-card');
@@ -197,20 +349,34 @@ window.switchHuntQuery = function(btn, platform) {
   card.querySelector(`.hunt-query-content[data-query="${platform}"]`).classList.add('active');
 };
 
-window.filterHunts = function() {
-  const query = document.getElementById('huntSearchInput').value.toLowerCase();
-  document.querySelectorAll('.hunt-card').forEach(card => {
-    card.style.display = card.dataset.search.includes(query) ? '' : 'none';
+window.filterHuntsAdvanced = function() {
+  const query = (document.getElementById('huntSearchInput')?.value || '').toLowerCase();
+  const catFilter = document.getElementById('huntCatFilter')?.value || 'all';
+  document.querySelectorAll('#ctab-hunt-library .hunt-category-group').forEach(group => {
+    const groupCat = group.dataset.cat;
+    if (catFilter !== 'all' && groupCat !== catFilter) { group.style.display = 'none'; return; }
+    group.style.display = '';
+    let visible = 0;
+    group.querySelectorAll('.hunt-card').forEach(card => {
+      const matchSearch = !query || card.dataset.search.includes(query);
+      const activeTypeChip = document.querySelector('#huntTypeFilters .filter-chip.active');
+      const typeFilter = activeTypeChip ? activeTypeChip.textContent.trim() : 'All';
+      const matchType = typeFilter === 'All' || card.dataset.type === typeFilter.split(' ').pop().toLowerCase();
+      card.style.display = (matchSearch && matchType) ? '' : 'none';
+      if (matchSearch && matchType) visible++;
+    });
+    if (visible === 0 && catFilter === 'all') group.style.display = 'none';
   });
 };
 
-window.filterHuntType = function(type, chip) {
-  document.querySelectorAll('.hunt-filter-bar .filter-chip').forEach(c => c.classList.remove('active'));
+window.filterHuntAdvType = function(type, chip) {
+  document.querySelectorAll('#huntTypeFilters .filter-chip').forEach(c => c.classList.remove('active'));
   chip.classList.add('active');
-  document.querySelectorAll('.hunt-card').forEach(card => {
-    card.style.display = (type === 'all' || card.dataset.type === type) ? '' : 'none';
-  });
+  filterHuntsAdvanced();
 };
+
+window.filterHunts = function() { filterHuntsAdvanced(); };
+window.filterHuntType = function(type, chip) { filterHuntAdvType(type, chip); };
 
 
 // ══════════════════════════════════════════════

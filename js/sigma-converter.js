@@ -95,6 +95,41 @@ const SigmaConverter = (() => {
     'TicketEncryptionType': '"Encryption Type"'
   };
 
+  const FIELD_MAP_WAZUH = {
+    'Image': 'data.win.eventdata.image', 'image': 'data.win.eventdata.image',
+    'OriginalFileName': 'data.win.eventdata.originalFileName',
+    'CommandLine': 'data.win.eventdata.commandLine', 'commandline': 'data.win.eventdata.commandLine',
+    'ParentImage': 'data.win.eventdata.parentImage', 'parentimage': 'data.win.eventdata.parentImage',
+    'ParentCommandLine': 'data.win.eventdata.parentCommandLine',
+    'User': 'data.win.eventdata.user', 'user': 'data.win.eventdata.user',
+    'DestinationIp': 'data.dest_ip', 'destinationip': 'data.dest_ip',
+    'DestinationPort': 'data.dest_port', 'destinationport': 'data.dest_port',
+    'SourceIp': 'data.src_ip', 'sourceip': 'data.src_ip', 'IpAddress': 'data.src_ip',
+    'SourcePort': 'data.src_port', 'sourceport': 'data.src_port',
+    'DestinationHostname': 'data.dest_hostname',
+    'TargetUserName': 'data.win.eventdata.targetUserName', 'targetusername': 'data.win.eventdata.targetUserName',
+    'SubjectUserName': 'data.win.eventdata.subjectUserName',
+    'LogonType': 'data.win.eventdata.logonType', 'logontype': 'data.win.eventdata.logonType',
+    'TargetServerName': 'data.win.eventdata.targetServerName',
+    'TargetDomainName': 'data.win.eventdata.targetDomainName',
+    'TargetFilename': 'data.win.eventdata.targetFilename', 'targetfilename': 'data.win.eventdata.targetFilename',
+    'TargetObject': 'data.win.eventdata.targetObject', 'targetobject': 'data.win.eventdata.targetObject',
+    'ImageLoaded': 'data.win.eventdata.imageLoaded',
+    'EventID': 'data.win.system.eventID', 'eventid': 'data.win.system.eventID', 'EventCode': 'data.win.system.eventID',
+    'ServiceName': 'data.win.eventdata.serviceName', 'servicename': 'data.win.eventdata.serviceName',
+    'ComputerName': 'agent.name',
+    'QueryName': 'data.win.eventdata.queryName', 'queryname': 'data.win.eventdata.queryName',
+    'PipeName': 'data.win.eventdata.pipeName',
+    'GrantedAccess': 'data.win.eventdata.grantedAccess',
+    'SourceImage': 'data.win.eventdata.sourceImage',
+    'TargetImage': 'data.win.eventdata.targetImage',
+    'Status': 'data.win.eventdata.status',
+    'Protocol': 'data.protocol',
+    'Hashes': 'data.win.eventdata.hashes',
+    'PrivilegeList': 'data.win.eventdata.privilegeList',
+    'TicketEncryptionType': 'data.win.eventdata.ticketEncryptionType'
+  };
+
   // ─── Log Source Mapping ─────────────────────────────────────
   const LOGSOURCE_SPLUNK = {
     'windows/security': 'index=wineventlog sourcetype=WinEventLog:Security',
@@ -149,6 +184,33 @@ const SigmaConverter = (() => {
     'default': ''
   };
 
+  const LOGSOURCE_WAZUH = {
+    'windows/security': 'decoder.name:"windows-security" OR data.win.system.channel:"Security"',
+    'windows/system': 'decoder.name:"windows-system" OR data.win.system.channel:"System"',
+    'windows/sysmon': 'decoder.name:"windows-sysmon" OR rule.groups:"windows" OR data.win.system.providerName:"Microsoft-Windows-Sysmon"',
+    'windows/powershell': 'decoder.name:"windows-powershell" OR data.win.system.channel:"Microsoft-Windows-PowerShell/Operational"',
+    'windows/process_creation': '(rule.groups:"windows" AND rule.groups:"process_creation") OR data.win.system.eventID:"4688" OR data.win.system.eventID:"1"',
+    'windows/image_load': '(rule.groups:"windows" AND data.win.system.eventID:"7")',
+    'windows/file_event': '(rule.groups:"windows" AND data.win.system.eventID:"11")',
+    'windows/registry_event': '(rule.groups:"windows" AND (data.win.system.eventID:"12" OR data.win.system.eventID:"13" OR data.win.system.eventID:"14"))',
+    'windows/network_connection': '(rule.groups:"windows" AND data.win.system.eventID:"3")',
+    'windows/dns_query': '(rule.groups:"windows" AND data.win.system.eventID:"22")',
+    'windows/pipe_created': '(rule.groups:"windows" AND (data.win.system.eventID:"17" OR data.win.system.eventID:"18"))',
+    'windows/wmi_event': '(rule.groups:"windows" AND (data.win.system.eventID:"19" OR data.win.system.eventID:"20" OR data.win.system.eventID:"21"))',
+    'linux/process_creation': 'rule.groups:"auditd" AND rule.groups:"execve"',
+    'linux/syslog': 'rule.groups:"syslog"',
+    'linux/auth': 'rule.groups:"authentication_success" OR rule.groups:"authentication_failed"',
+    'webserver/access': 'rule.groups:"web" OR decoder.name:"apache" OR decoder.name:"nginx"',
+    'firewall': 'rule.groups:"firewall"',
+    'proxy': 'rule.groups:"proxy"',
+    'dns': 'rule.groups:"dns" OR decoder.name:"named"',
+    'cloud/azure': 'decoder.name:"azure"',
+    'cloud/aws': 'decoder.name:"aws"',
+    'cloud/gcp': 'decoder.name:"gcp"',
+    'email': 'rule.groups:"office365"',
+    'default': '*'
+  };
+
   // ─── Helpers ────────────────────────────────────────────────
   function resolveLogSourceKey(logsource) {
     if (!logsource) return 'default';
@@ -174,6 +236,7 @@ const SigmaConverter = (() => {
 
   function mapFieldSplunk(f) { return FIELD_MAP_SPLUNK[f] || FIELD_MAP_SPLUNK[f.toLowerCase()] || f; }
   function mapFieldQRadar(f) { return FIELD_MAP_QRADAR[f] || FIELD_MAP_QRADAR[f.toLowerCase()] || f; }
+  function mapFieldWazuh(f) { return FIELD_MAP_WAZUH[f] || FIELD_MAP_WAZUH[f.toLowerCase()] || f; }
 
   // ─── Parse Sigma YAML detection block ───────────────────────
   function parseSigmaYaml(yamlStr) {
@@ -291,6 +354,34 @@ const SigmaConverter = (() => {
     return parts.length === 1 ? parts[0] : '(' + parts.join(' OR ') + ')';
   }
 
+  function buildWazuhCondition(field, values, modifier) {
+    const wzField = mapFieldWazuh(field.split('|')[0]);
+    const mod = modifier || '';
+    const parts = [];
+
+    for (const v of values) {
+      const val = v.replace(/\\\\/g, '\\').replace(/:/g, '\\:');
+      if (mod.includes('endswith')) {
+        parts.push(`${wzField}:*${val}`);
+      } else if (mod.includes('startswith')) {
+        parts.push(`${wzField}:${val}*`);
+      } else if (mod.includes('contains')) {
+        parts.push(`${wzField}:*${val}*`);
+      } else if (mod.includes('re')) {
+        // Wazuh uses Lucene/KQL regex syntax wrapped in slashes
+        parts.push(`${wzField}:/${val}/`);
+      } else {
+        const numVal = Number(v);
+        if (!isNaN(numVal) && v.match(/^\d+$/)) {
+          parts.push(`${wzField}:"${numVal}"`);
+        } else {
+          parts.push(`${wzField}:"${val}"`);
+        }
+      }
+    }
+    return parts.length === 1 ? parts[0] : '(' + parts.join(' OR ') + ')';
+  }
+
   function selectionToSplunk(selBlock) {
     const conditions = [];
     for (const [rawField, values] of Object.entries(selBlock)) {
@@ -309,6 +400,16 @@ const SigmaConverter = (() => {
       conditions.push(buildQRadarCondition(rawField, Array.isArray(values) ? values : [values], modifier));
     }
     return conditions.join('\n  AND ');
+  }
+
+  function selectionToWazuh(selBlock) {
+    const conditions = [];
+    for (const [rawField, values] of Object.entries(selBlock)) {
+      const pipeIdx = rawField.indexOf('|');
+      const modifier = pipeIdx > -1 ? rawField.substring(pipeIdx + 1) : '';
+      conditions.push(buildWazuhCondition(rawField, Array.isArray(values) ? values : [values], modifier));
+    }
+    return conditions.join(' AND ');
   }
 
   // ─── Main Conversion Functions ──────────────────────────────
@@ -428,6 +529,79 @@ const SigmaConverter = (() => {
     return query;
   }
 
+  function toWazuh(rule) {
+    if (rule.wazuhQuery) return rule.wazuhQuery;
+
+    const parsed = parseSigmaYaml(rule.sigmaYaml);
+    const lsKey = resolveLogSourceKey(rule.logsource || parsed.logsource);
+    const lsFilter = LOGSOURCE_WAZUH[lsKey] || '*';
+
+    // Build selection blocks
+    const selNames = Object.keys(parsed.selections);
+    if (selNames.length === 0) {
+      return buildFallbackWazuh(rule, lsFilter);
+    }
+
+    const selQueries = {};
+    for (const name of selNames) {
+      selQueries[name] = selectionToWazuh(parsed.selections[name]);
+    }
+
+    let condition = parsed.condition || selNames.join(' and ');
+
+    // Build query iteratively based on boolean logic
+    let queryPayload = '';
+    let hasSelection = false;
+
+    // Convert selection names into actual logic blocks
+    for (const [name, q] of Object.entries(selQueries)) {
+      const isNegated = condition.includes(`not ${name}`);
+      const isFilter = name.startsWith('filter');
+      
+      if (isFilter || isNegated) {
+        queryPayload += ` AND NOT (${q})`;
+      } else {
+        if (hasSelection) {
+          const joiner = condition.includes(`${name}`) && condition.match(new RegExp(`\\bor\\s+${name}\\b`, 'i')) ? ' OR ' : ' AND ';
+          queryPayload += `${joiner}(${q})`;
+        } else {
+          queryPayload += `(${q})`;
+          hasSelection = true;
+        }
+      }
+    }
+
+    // Combine Log Source Filter with conditions
+    let finalQuery = `${lsFilter === '*' ? '' : `(${lsFilter}) AND `}${queryPayload}`;
+    if (!queryPayload || queryPayload.trim() === '') {
+       if (lsFilter !== '*') finalQuery = lsFilter;
+       else finalQuery = '';
+    }
+
+    // ─── Wazuh Query Validation ───
+    const isCorrelation = condition && (/\|\s*(near|count|min|max|avg|sum)/i.test(condition));
+    
+    // Check for impossible EventID combinations (e.g. eventID:1 AND eventID:2)
+    // We split by ANDs at the top level of our generated query payload.
+    const andBlocks = queryPayload.split(/\s+AND\s+(?![^(]*\))/i);
+    let eventIdBlockCount = 0;
+    for (const b of andBlocks) {
+      if (b.includes('data.win.system.eventID')) {
+         eventIdBlockCount++;
+      }
+    }
+
+    if (eventIdBlockCount > 1 || isCorrelation) {
+      return "/* Conversion Failed: Correlation Required */\n/* This Sigma rule involves multi-event sequence or aggregation logic, which cannot be represented in a single declarative Wazuh KQL query. Implement via Wazuh decoders/rules. */";
+    }
+
+    if (!finalQuery || finalQuery.trim() === '' || finalQuery === '*') {
+      return "/* Conversion Failed: Requires Review */\n/* The converter could not extract valid KQL logic from this Sigma rule. */";
+    }
+
+    return finalQuery;
+  }
+
   // ─── Fallback builders for rules without parseable YAML ─────
   function buildFallbackSplunk(rule, base) {
     let q = base + '\n';
@@ -465,12 +639,30 @@ const SigmaConverter = (() => {
     return q;
   }
 
+  function buildFallbackWazuh(rule, lsFilter) {
+    let q = (lsFilter && lsFilter !== '*') ? `(${lsFilter})` : '';
+    if (rule.techniqueName) {
+      const terms = rule.techniqueName.split(/[\s\/]+/).filter(t => t.length > 3);
+      if (terms.length > 0) {
+        const termsQ = `(${terms.map(t => `*${t}*`).join(' OR ')})`;
+        q = q ? `${q} AND ${termsQ}` : termsQ;
+      }
+    }
+    
+    if (!q || q === '*') {
+       return "/* Conversion Failed: Requires Review */\n/* The converter could not extract valid KQL logic from this Sigma rule fallback. */";
+    }
+    return q;
+  }
+
   // ─── Public API ──────────────────────────────────────────────
   return {
     toSplunk,
     toQRadar,
+    toWazuh,
     mapFieldSplunk,
-    mapFieldQRadar
+    mapFieldQRadar,
+    mapFieldWazuh
   };
 
 })();
